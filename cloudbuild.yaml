@@ -1,0 +1,19 @@
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+steps:
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    args:
+      - 'gcloud'
+      - 'functions'
+      - 'deploy'
+      - 'asteroids-transform'
+      - '--gen2'
+      - '--runtime=python312'
+      - '--region=europe-west1'
+      - '--entry-point=main'
+      - '--source=.'
+      - '--trigger-http'
+      - '--no-allow-unauthenticated'
+      - '--memory=256Mi'
+      - '--timeout=300s'
