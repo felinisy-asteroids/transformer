@@ -7,7 +7,7 @@ steps:
       - 'gcloud'
       - 'functions'
       - 'deploy'
-      - 'asteroids-transform'
+      - 'transformer'
       - '--gen2'
       - '--runtime=python312'
       - '--region=europe-west1'
