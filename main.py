@@ -1,46 +1,37 @@
-from gcs_client.gcs_manager import GcsManager
+from typing import Any, Dict, Tuple
+
 import pandas as pd
+import requests
 
-from transformer.transformer import parse_response
+from gcs_client.gcs_manager import GcsManager
+from transformer.transformer import transform_asteroid_data
 
 
-def main(request):
-    request_data = request.get_json()
-    bucket_name = request_data.get("bucket")
+def main(request: requests) -> Tuple[Dict[str, Any], int]:
+    """
+    Cloud Function entry point.
+
+    Args:
+        request: HTTP request object containing JSON body with bucket name.
+
+    Returns:
+        JSON response with status and row count.
+    """
+    request_data: Dict[str, Any] = request.get_json(silent=True) or {}
+    bucket_name: str | None = request_data.get("bucket")
+
+    if not bucket_name:
+        return {"error": "Bucket name is required"}, 400
 
     gcs = GcsManager(bucket_name)
-    blob = gcs.get_blob()
 
-    if not blob.exists():
-        return {"error": "json not found"}, 404
+    if not gcs.get_raw_blob().exists():
+        return {"error": "Raw JSON not found"}, 404
 
-    raw_data = gcs.blob_loader()
+    raw_data = gcs.load_raw_blob()
 
-    records = parse_response(raw_data)
+    df_final: pd.DataFrame = transform_asteroid_data(raw_data)
 
-
-
-    df = pd.DataFrame(records)
-
-    required_columns = [
-        "asteroid_id", "neo_reference_id", "name",
-        "absolute_magnitude_h", "is_potentially_hazardous_asteroid",
-        "is_sentry_object", "export_date"
-    ]
-
-    for col in required_columns:
-        if col not in df.columns:
-            df[col] = None
-
-    df_final = df[required_columns]
-
-    gcs.blob_uploader(df_final)
+    gcs.upload_processed_csv(df_final)
 
     return {"status": "success", "rows": len(df_final)}, 200
-
-# if __name__ == '__main__':
-#     class MockRequest:
-#         def get_json(self):
-#             return {"bucket": "asteroids-etl"}
-#     main(MockRequest())
-
